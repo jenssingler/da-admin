@@ -14,12 +14,15 @@ import {
   CopyObjectCommand,
 } from '@aws-sdk/client-s3';
 
+import getObject from './get.js';
 import getS3Config from '../utils/config.js';
+import { invalidateCollab } from '../utils/object.js';
+import { postObjectVersionWithLabel, putObjectWithVersion } from '../version/put.js';
 import { listCommand } from '../utils/list.js';
 
 const MAX_KEYS = 900;
 
-export const copyFile = async (client, daCtx, sourceKey, details, isRename) => {
+export const copyFile = async (config, env, daCtx, sourceKey, details, isRename) => {
   const Key = `${sourceKey.replace(details.source, details.destination)}`;
 
   const input = {
@@ -44,13 +47,50 @@ export const copyFile = async (client, daCtx, sourceKey, details, isRename) => {
   }
 
   try {
-    await client.send(new CopyObjectCommand(input));
+    const client = new S3Client(config);
+    client.middlewareStack.add(
+      (next) => async (args) => {
+        // eslint-disable-next-line no-param-reassign
+        args.request.headers['cf-copy-destination-if-none-match'] = '*';
+        return next(args);
+      },
+      {
+        step: 'build',
+        name: 'ifNoneMatchMiddleware',
+        tags: ['METADATA', 'IF-NONE-MATCH'],
+      },
+    );
+    const resp = await client.send(new CopyObjectCommand(input));
+    return resp;
   } catch (e) {
-    console.log({
-      code: e.$metadata.httpStatusCode,
-      dest: Key,
-      src: `${daCtx.org}-content/${sourceKey}`,
-    });
+    if (e.$metadata.httpStatusCode === 412) {
+      // Not the happy path - something is at the destination already.
+      if (!isRename) {
+        // This is a copy so just put the source into the target to keep the history.
+
+        const original = await getObject(env, { org: daCtx.org, key: sourceKey });
+        return /* await */ putObjectWithVersion(env, daCtx, {
+          org: daCtx.org,
+          key: Key,
+          body: original.body,
+          contentLength: original.contentLength,
+          type: original.contentType,
+        });
+      }
+      await postObjectVersionWithLabel('Moved', env, daCtx);
+
+      const client = new S3Client(config);
+      // This is a move so copy to the new location
+      return /* await */ client.send(new CopyObjectCommand(input));
+    } else if (e.$metadata.httpStatusCode === 404) {
+      return { $metadata: e.$metadata };
+    }
+    throw e;
+  } finally {
+    if (Key.endsWith('.html')) {
+      // Reset the collab cached state for the copied object
+      await invalidateCollab('syncAdmin', `${daCtx.origin}/source/${daCtx.org}/${Key}`, env);
+    }
   }
 };
 
@@ -81,7 +121,7 @@ export default async function copyObject(env, daCtx, details, isRename) {
       }
     }
     await Promise.all(sourceKeys.map(async (key) => {
-      await copyFile(client, daCtx, key, details, isRename);
+      await copyFile(config, env, daCtx, key, details, isRename);
     }));
 
     if (remainingKeys.length) {

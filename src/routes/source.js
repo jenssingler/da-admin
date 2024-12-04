@@ -12,17 +12,10 @@
 import getObject from '../storage/object/get.js';
 import putObject from '../storage/object/put.js';
 import deleteObjects from '../storage/object/delete.js';
+import { invalidateCollab } from '../storage/utils/object.js';
 
 import putHelper from '../helpers/source.js';
 import deleteHelper from '../helpers/delete.js';
-
-async function invalidateCollab(api, url, env) {
-  const invPath = `/api/v1/${api}?doc=${url}`;
-
-  // Use dacollab service binding, hostname is not relevant
-  const invURL = `https://localhost${invPath}`;
-  await env.dacollab.fetch(invURL);
-}
 
 export async function deleteSource({ req, env, daCtx }) {
   const details = await deleteHelper(req);
