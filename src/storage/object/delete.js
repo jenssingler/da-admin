@@ -15,7 +15,7 @@ import {
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import getS3Config from '../utils/config.js';
-import { postObjectVersionWithLabel } from '../version/put.js';
+// import { postObjectVersionWithLabel } from '../version/put.js';
 import { listCommand } from '../utils/list.js';
 
 async function invalidateCollab(api, url, env) {
@@ -26,13 +26,14 @@ async function invalidateCollab(api, url, env) {
   await env.dacollab.fetch(invURL);
 }
 
-export async function deleteObject(client, daCtx, Key, env, isMove = false) {
-  const fname = Key.split('/').pop();
+export async function deleteObject(client, daCtx, Key, env /* , isMove = false */) {
+  // const fname = Key.split('/').pop();
 
-  if (fname.includes('.') && !fname.startsWith('.') && !fname.endsWith('.props')) {
-    const tmpCtx = { ...daCtx, key: Key }; // For next calls, ctx needs the passed
-    await postObjectVersionWithLabel(isMove ? 'Moved' : 'Deleted', env, tmpCtx);
-  }
+  // if (fname.includes('.') && !fname.startsWith('.') && !fname.endsWith('.props')) {
+  //   const tmpCtx = { ...daCtx, key: Key }; // For next calls, ctx needs the passed
+  //   note the Ext also needs to be set ^^^
+  //   await postObjectVersionWithLabel(isMove ? 'Moved' : 'Deleted', env, tmpCtx);
+  // }
 
   let resp;
   try {
