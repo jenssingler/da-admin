@@ -9,15 +9,23 @@
  * OF ANY KIND, either express or implied. See the License for the specific language
  * governing permissions and limitations under the License.
  */
-const decodeJwt = (token) => {
-  let [email, created_at = 0, expires_in = 0] = token.split(':');
-  created_at += Math.floor(new Date().getTime() / 1000);
-  expires_in += created_at;
+const jwtVerify = async (token, jwks) => {
+  const { 0: email, 1: created = 0, 2: expires = 0, 3: valid = "true" } = token.split(':');
+  const created_at = Math.floor(new Date().getTime() / 1000) + Number(created);
+  const expires_in = Number(expires);
+  if (valid !== 'true') {
+    throw new Error('Validation failed');
+  }
   return {
-    user_id: email,
-    created_at,
-    expires_in: expires_in || created_at + 1000,
+    payload:
+      {
+        user_id: email,
+        created_at,
+        expires_in: expires_in || created_at + 1000,
+      }
   };
 };
 
-export default { decodeJwt };
+const createRemoteJWKSet = async () => {}
+
+export default { jwtVerify, createRemoteJWKSet };

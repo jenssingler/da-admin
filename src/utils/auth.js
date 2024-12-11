@@ -9,7 +9,9 @@
  * OF ANY KIND, either express or implied. See the License for the specific language
  * governing permissions and limitations under the License.
  */
-import { decodeJwt } from 'jose';
+import { createRemoteJWKSet, jwtVerify } from 'jose';
+
+const JWKS_IMS = await createRemoteJWKSet(new URL('https://ims-na1.adobelogin.com/ims/keys'));
 
 export async function setUser(userId, expiration, headers, env) {
   const resp = await fetch(`${env.IMS_ORIGIN}/ims/profile/v1`, { headers });
@@ -32,8 +34,17 @@ export async function getUsers(req, env) {
   async function parseUser(token) {
     if (!token || token.trim().length === 0) return { email: 'anonymous' };
 
-    const { user_id: userId, created_at: createdAt, expires_in: expiresIn } = decodeJwt(token);
-    const expires = Number(createdAt) + Number(expiresIn);
+    let expires;
+    let userId;
+    try {
+      const { payload } = await jwtVerify(token, JWKS_IMS);
+      const { created_at: createdAt, expires_in: expiresIn } = payload;
+      userId = payload.user_id;
+      expires = Number(createdAt) + Number(expiresIn);
+    } catch {
+      return { email: 'anonymous' };
+    }
+
     const now = Math.floor(new Date().getTime() / 1000);
 
     if (expires < now) return { email: 'anonymous' };

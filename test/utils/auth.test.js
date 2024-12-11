@@ -112,6 +112,13 @@ describe('DA auth', () => {
       assert.strictEqual(users[0].email, 'anonymous');
     });
 
+    it('anonymous if fake JWT', async () => {
+      const env2 = JSON.parse(JSON.stringify(env));
+      env2.DA_AUTH.get = () => ('{"email":"jdoe@geometrixx.info"}');
+      const users = await getUsers(reqs.anotherFolder, env2);
+      assert.strictEqual(users[0].email, 'anonymous');
+    });
+
     it('authorized if email matches', async () => {
       const users = await getUsers(reqs.site, env);
       assert.strictEqual(users[0].email, 'aparker@geometrixx.info');

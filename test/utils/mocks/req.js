@@ -25,6 +25,12 @@ const optsWithAuth = {
   }),
 };
 
+const optsWithAuthButInvalidSignature = {
+  headers: new Headers({
+    Authorization: 'Bearer jdoe@geometrixx.info:200:1000:false',
+  }),
+};
+
 const optsWithExpAuth = {
   headers: new Headers({
     Authorization: 'Bearer aparker@geometrixx.info:100:-150',
@@ -49,6 +55,7 @@ const reqs = {
   org: new Request('https://da.live/source/cq/', optsWithEmptyHead),
   site: new Request('https://da.live/source/cq/Geometrixx', optsWithAuth),
   folder: new Request('https://da.live/source/cq/Geometrixx/NFT/', optsWithExpAuth),
+  anotherFolder: new Request('https://da.live/source/cq/Geometrixx/NFT/2/', optsWithAuthButInvalidSignature),
   file: new Request('https://da.live/source/cq/Geometrixx/NFT/Outreach.html', optsWithEmptyBearer),
   media: new Request('https://da.live/source/cq/Geometrixx/NFT/blockchain.png', optsWithForceFail),
   siteMulti: new Request('https://da.live/source/cq/Geometrixx', optsWithMultiAuthAnon),
